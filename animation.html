@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cats Mining Animation</title>
+    <style>
+        body,
+        html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #000;
+        }
+
+        canvas {
+            display: block;
+        }
+    </style>
+</head>
+
+<body>
+    <canvas id="canvas"></canvas>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+
+        let width, height;
+        const img = new Image();
+        img.src = 'cats_mining.png';
+
+        // Particle system for "dust" or "spores"
+        const particles = [];
+        const particleCount = 100;
+
+        class Particle {
+            constructor() {
+                this.reset();
+            }
+
+            reset() {
+                this.x = Math.random() * width;
+                this.y = Math.random() * height;
+                this.vx = (Math.random() - 0.5) * 0.5;
+                this.vy = (Math.random() - 0.5) * 0.5;
+                this.size = Math.random() * 2 + 0.5;
+                this.alpha = Math.random() * 0.5 + 0.1;
+                this.life = Math.random() * 100 + 50;
+            }
+
+            update() {
+                this.x += this.vx;
+                this.y += this.vy;
+                this.life--;
+
+                if (this.life <= 0 || this.x < 0 || this.x > width || this.y < 0 || this.y > height) {
+                    this.reset();
+                }
+            }
+
+            draw() {
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fillStyle = `rgba(255, 255, 230, ${this.alpha})`;
+                ctx.fill();
+            }
+        }
+
+        // Animation state
+        let scale = 1.0;
+        let scaleDirection = 1;
+        const maxScale = 1.15;
+        const minScale = 1.0;
+        const panSpeed = 0.2;
+        let panX = 0;
+        let panY = 0;
+        let time = 0;
+
+        function resize() {
+            width = window.innerWidth;
+            height = window.innerHeight;
+            canvas.width = width;
+            canvas.height = height;
+
+            // Re-initialize particles on resize
+            particles.length = 0;
+            for (let i = 0; i < particleCount; i++) {
+                particles.push(new Particle());
+            }
+        }
+
+        window.addEventListener('resize', resize);
+
+        function draw() {
+            // Clear screen
+            ctx.fillStyle = '#1a0505'; // Dark reddish background
+            ctx.fillRect(0, 0, width, height);
+
+            if (img.complete) {
+                // Calculate aspect ratio to cover screen
+                const imgAspect = img.width / img.height;
+                const screenAspect = width / height;
+
+                let drawWidth, drawHeight;
+                if (screenAspect > imgAspect) {
+                    drawWidth = width;
+                    drawHeight = width / imgAspect;
+                } else {
+                    drawHeight = height;
+                    drawWidth = height * imgAspect;
+                }
+
+                // Slow Zoom/Pan Effect
+                // Oscillate scale slightly
+                scale = minScale + (Math.sin(time * 0.0005) + 1) / 2 * (maxScale - minScale);
+
+                // Slight panning
+                const maxPanX = (drawWidth * scale - width) / 2;
+                const maxPanY = (drawHeight * scale - height) / 2;
+
+                // Setup transform
+                ctx.save();
+                ctx.translate(width / 2, height / 2);
+                ctx.scale(scale, scale);
+                ctx.translate(-width / 2, -height / 2);
+
+                // Draw image centered
+                const x = (width - drawWidth) / 2;
+                const y = (height - drawHeight) / 2;
+
+                ctx.drawImage(img, x, y, drawWidth, drawHeight);
+                ctx.restore();
+            }
+
+            // Draw Particles
+            particles.forEach(p => {
+                p.update();
+                p.draw();
+            });
+
+            // Lighting/Vignette Overlay
+            const gradient = ctx.createRadialGradient(width / 2, height / 2, height / 3, width / 2, height / 2, height);
+            gradient.addColorStop(0, 'rgba(0,0,0,0)');
+            gradient.addColorStop(1, 'rgba(50, 10, 10, 0.6)'); // Dark reddish vignette
+
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, width, height);
+
+            // Subtle flicker
+            const flicker = Math.random() * 0.05;
+            ctx.fillStyle = `rgba(255, 200, 100, ${flicker})`;
+            ctx.fillRect(0, 0, width, height);
+
+            time++;
+            requestAnimationFrame(draw);
+        }
+
+        img.onload = () => {
+            resize();
+            draw();
+        };
+
+        // Handle case if image is already cached/loaded
+        if (img.complete) {
+            resize();
+            draw();
+        }
+
+    </script>
+</body>
+
+</html>
